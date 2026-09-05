@@ -6,9 +6,9 @@ old-school engineering console rather than a typical CLI tool.
 
 ```
 ╔══════════════════════════════════════════════════╗
-║          ORBITAL MECHANICS SIMULATOR                ║
-║                     v1.0.0                          ║
-║             Interactive CLI Tool                    ║
+║          ORBITAL MECHANICS SIMULATOR                    ║
+║                     v1.0.0                              ║
+║             Interactive CLI Tool                        ║
 ╚══════════════════════════════════════════════════╝
 ```
 
