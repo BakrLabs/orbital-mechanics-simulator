@@ -1,28 +1,12 @@
+use crate::app::central_body;
 use crate::app::propulsion;
 use crate::physics::body::CelestialBody;
 use crate::physics::hohmann::HohmannTransfer;
 use crate::ui;
 
-/// Hohmann Transfer submenu. Circular-to-circular only for now - an
-/// elliptical starting or ending orbit needs to pick a specific point
-/// on that ellipse to transfer from/to, which is a bigger feature than
-/// this version is trying to be.
 pub fn menu_loop() {
-    loop {
-        ui::display::clear_screen();
-        println!("HOHMANN TRANSFER\n");
-        println!("Central Body:");
-        println!("1. Earth");
-        println!("0. Back\n");
-
-        match ui::input::read_menu_choice("Select: ") {
-            1 => transfer_flow(CelestialBody::earth()),
-            0 => break,
-            _ => {
-                println!("\nNot a valid option.");
-                ui::input::pause("Press ENTER to try again...");
-            }
-        }
+    if let Some(body) = central_body::select() {
+        transfer_flow(body);
     }
 }
 
@@ -51,17 +35,9 @@ fn transfer_flow(body: CelestialBody) {
     post_result_menu(&transfer);
 }
 
-/// Shown right after a transfer's numbers come up - this is the actual
-/// connection between Hohmann Transfer and Propulsion the spec calls
-/// for: the total Δv this transfer needs gets handed straight to the
-/// propellant calculator, so the user doesn't have to write it down
-/// and re-enter it by hand.
-///
-/// The spec's example also lists a "Save result" option; there's no
-/// persistence layer anywhere in this app yet (nothing writes to disk,
-/// and nothing else expects a "saved results" concept to exist), so
-/// rather than add a menu item that doesn't actually do anything,
-/// this only offers the two choices that currently mean something.
+// no persistence layer exists yet, so unlike the spec's example menu
+// this only offers propellant calc + return, not a "save result"
+// option that wouldn't actually do anything
 fn post_result_menu(transfer: &HohmannTransfer) {
     loop {
         println!("\nWhat would you like to do?\n");
@@ -108,37 +84,37 @@ fn show_result(
     let transfer_time_min = transfer.transfer_time_s() / 60.0;
 
     println!("╔══════════════════════════════════════════════╗");
-    println!("║              HOHMANN TRANSFER                ║");
+    println!("║               HOHMANN TRANSFER               ║");
     println!("╚══════════════════════════════════════════════╝\n");
     println!("{}\n", body.name);
 
     println!("INITIAL ORBIT");
-    println!("Altitude:          {:>16.6} km", initial_alt_km);
-    println!("Radius:            {:>16.6} km", r1_km);
-    println!("Circular velocity:  {:>16.6} km/s\n", v1_km_s);
+    println!("{:<22}{:>14.6} km", "Altitude:", initial_alt_km);
+    println!("{:<22}{:>14.6} km", "Radius:", r1_km);
+    println!("{:<22}{:>14.6} km/s\n", "Circular velocity:", v1_km_s);
 
     println!("TARGET ORBIT");
-    println!("Altitude:          {:>16.6} km", target_alt_km);
-    println!("Radius:            {:>16.6} km", r2_km);
-    println!("Circular velocity:  {:>16.6} km/s\n", v2_km_s);
+    println!("{:<22}{:>14.6} km", "Altitude:", target_alt_km);
+    println!("{:<22}{:>14.6} km", "Radius:", r2_km);
+    println!("{:<22}{:>14.6} km/s\n", "Circular velocity:", v2_km_s);
 
     println!("TRANSFER ORBIT");
-    println!("Semi-major axis:     {:>16.6} km", at_km);
+    println!("{:<22}{:>14.6} km", "Semi-major axis:", at_km);
 
     println!("\n────────────────────────────────────────────────\n");
 
     println!("BURN #1");
-    println!("Δv:                {:>16.6} km/s   ({:>10.3} m/s)\n", dv1_km_s, dv1_km_s * 1000.0);
+    println!("{:<22}{:>14.6} km/s   ({:>10.3} m/s)\n", "Δv:", dv1_km_s, dv1_km_s * 1000.0);
 
     println!("BURN #2");
-    println!("Δv:                {:>16.6} km/s   ({:>10.3} m/s)\n", dv2_km_s, dv2_km_s * 1000.0);
+    println!("{:<22}{:>14.6} km/s   ({:>10.3} m/s)\n", "Δv:", dv2_km_s, dv2_km_s * 1000.0);
 
     println!("TOTAL Δv:");
-    println!("                   {:>16.6} km/s   ({:>10.3} m/s)\n", total_dv_km_s, total_dv_km_s * 1000.0);
+    println!("{:<22}{:>14.6} km/s   ({:>10.3} m/s)\n", "", total_dv_km_s, total_dv_km_s * 1000.0);
 
     println!("TRANSFER TIME:");
-    println!("                    {:>16.6} minutes", transfer_time_min);
-    println!("                    {:>16.3} seconds", transfer.transfer_time_s());
+    println!("{:<22}{:>14.6} minutes", "", transfer_time_min);
+    println!("{:<22}{:>14.6} seconds", "", transfer.transfer_time_s());
 
     if target_alt_km < initial_alt_km {
         println!("\nNote: target orbit is lower - both burns are retrograde");

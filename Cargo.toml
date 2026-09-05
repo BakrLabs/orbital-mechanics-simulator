@@ -1,10 +1,6 @@
 [package]
 name = "orbital-mechanics-simulator"
-version = "0.1.0"
+version = "1.0.0"
 edition = "2021"
-
-# No external crates yet. v0.1 is just the terminal shell -
-# real dependencies (if any) get added once there's actual
-# physics to lean on them for.
 
 [dependencies]

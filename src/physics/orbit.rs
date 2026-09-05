@@ -3,18 +3,9 @@ use std::f64::consts::PI;
 use crate::physics::orbit_type::OrbitType;
 use crate::physics::vector2::Vector2;
 
-/// An orbit around some central body. Internally this still boils
-/// down to semi-major axis + eccentricity, same as v0.2 - what's new
-/// is that it no longer assumes those describe a closed ellipse.
-/// A parabolic or hyperbolic trajectory has an eccentricity too (it's
-/// just >= 1), so the same struct covers all three; the methods that
-/// only make sense for a bound orbit (apoapsis, period) return
-/// `Option` instead of quietly producing nonsense numbers.
-///
-/// For parabolic orbits specifically, semi-major axis is technically
-/// undefined (it's infinite) - `specific_angular_momentum` is stored
-/// directly rather than derived from `a`, since deriving it from a
-/// formula involving infinity is asking for trouble.
+// a/e representation covers all four orbit types; apoapsis and
+// period are None for unbound orbits. h is stored directly instead
+// of derived from a/e since parabolic orbits have infinite a.
 pub struct Orbit {
     pub semi_major_axis_m: f64,
     pub eccentricity: f64,
@@ -23,11 +14,6 @@ pub struct Orbit {
 }
 
 impl Orbit {
-    /// Shared constructor. `h` (specific angular momentum) is derived
-    /// from a/e here for the periapsis/apoapsis and semi-major-axis/
-    /// eccentricity entry points, where it isn't already known -
-    /// `from_position_velocity` bypasses this and supplies its own `h`
-    /// directly, since it has the real vector cross product on hand.
     fn from_a_e(semi_major_axis_m: f64, eccentricity: f64, mu: f64) -> Self {
         let h = (mu * semi_major_axis_m * (1.0 - eccentricity.powi(2))).sqrt();
         Orbit {
@@ -38,33 +24,16 @@ impl Orbit {
         }
     }
 
-    /// Builds an orbit directly from periapsis/apoapsis radii (distance
-    /// from the center of the body, not altitude - altitude gets
-    /// converted to radius before this is called). Only makes sense
-    /// for a closed orbit, which is exactly what having both a
-    /// periapsis and an apoapsis means.
     pub fn from_periapsis_apoapsis(periapsis_radius_m: f64, apoapsis_radius_m: f64, mu: f64) -> Self {
         let a = (periapsis_radius_m + apoapsis_radius_m) / 2.0;
         let e = (apoapsis_radius_m - periapsis_radius_m) / (apoapsis_radius_m + periapsis_radius_m);
         Orbit::from_a_e(a, e, mu)
     }
 
-    /// Builds an orbit directly from semi-major axis and eccentricity -
-    /// the two numbers this struct stores internally anyway, so this
-    /// is close to a pass-through, but it's still the right place to
-    /// centralize construction rather than have callers build the
-    /// struct's fields by hand.
     pub fn from_semi_major_axis_eccentricity(semi_major_axis_m: f64, eccentricity: f64, mu: f64) -> Self {
         Orbit::from_a_e(semi_major_axis_m, eccentricity, mu)
     }
 
-    /// Builds an orbit from a 2D position and velocity vector at some
-    /// instant - the classical two-body "state vector to orbital
-    /// elements" conversion, restricted to the planar (2D) case.
-    ///
-    /// Position and velocity should be in meters and meters/second
-    /// respectively; the unit conversion from km happens at the call
-    /// site, same as the other constructors.
     pub fn from_position_velocity(position_m: Vector2, velocity_m_s: Vector2, mu: f64) -> Self {
         let r = position_m.magnitude();
         let v = velocity_m_s.magnitude();
@@ -72,21 +41,11 @@ impl Orbit {
         let specific_energy = v * v / 2.0 - mu / r;
         let h = position_m.cross(&velocity_m_s);
 
-        // e = sqrt(1 + 2*energy*h^2/mu^2). For an orbit that's
-        // circular in practice, floating-point error in `specific_energy`
-        // can push the term under the sqrt fractionally below zero
-        // (it should be exactly -1/2 there, giving e = 0) - clamping
-        // at 0 avoids a NaN from sqrt of a tiny negative number.
+        // clamp instead of NaN on fp rounding for near-circular orbits
         let under_sqrt = 1.0 + (2.0 * specific_energy * h * h) / (mu * mu);
         let e = under_sqrt.max(0.0).sqrt();
 
-        // a = -mu / (2*energy) only holds when energy isn't ~0. A
-        // parabolic orbit (energy == 0, e == 1) has no finite
-        // semi-major axis at all - representing it as infinity keeps
-        // downstream formulas (like velocity_at_radius_m_s, which only
-        // uses 1/a) well-behaved: 1/inf is just 0, so vis-viva quietly
-        // degenerates to the correct v = sqrt(2*mu/r) for a parabolic
-        // trajectory without a special case there.
+        // parabolic -> infinite a, but vis-viva only uses 1/a so it degrades fine (1/inf = 0)
         let a = if specific_energy.abs() > 1e-9 {
             -mu / (2.0 * specific_energy)
         } else {
@@ -109,9 +68,6 @@ impl Orbit {
         self.semi_major_axis_m * (1.0 - self.eccentricity)
     }
 
-    /// Only bound orbits (circular/elliptical) have an apoapsis - a
-    /// parabolic or hyperbolic trajectory just keeps going and never
-    /// comes back, so there's nothing meaningful to return.
     pub fn apoapsis_radius_m(&self) -> Option<f64> {
         if self.orbit_type().is_bound() {
             Some(self.semi_major_axis_m * (1.0 + self.eccentricity))
@@ -120,9 +76,6 @@ impl Orbit {
         }
     }
 
-    /// Orbital period, in seconds. Only defined for a closed orbit -
-    /// something on a parabolic or hyperbolic trajectory never
-    /// completes a revolution, so there's no period to report.
     pub fn period_s(&self) -> Option<f64> {
         if self.orbit_type().is_bound() {
             Some(2.0 * PI * (self.semi_major_axis_m.powi(3) / self.mu).sqrt())
@@ -131,12 +84,6 @@ impl Orbit {
         }
     }
 
-    /// Vis-viva: speed at a given orbital radius (distance from the
-    /// center of the body, in meters). Works the same regardless of
-    /// orbit type since it only depends on 1/a, and 1/a is 0 for a
-    /// parabolic orbit's (infinite) semi-major axis and negative for
-    /// a hyperbolic orbit's - both fall out correctly with no special
-    /// casing needed here.
     pub fn velocity_at_radius_m_s(&self, radius_m: f64) -> f64 {
         (self.mu * (2.0 / radius_m - 1.0 / self.semi_major_axis_m)).sqrt()
     }
@@ -149,15 +96,10 @@ impl Orbit {
         self.apoapsis_radius_m().map(|ra| self.velocity_at_radius_m_s(ra))
     }
 
-    /// Specific orbital energy, in J/kg (equivalently m^2/s^2).
-    /// Negative for bound orbits, ~zero for parabolic, positive for
-    /// hyperbolic. For a parabolic orbit `a` is infinite, so this
-    /// correctly rounds to 0 rather than needing a special case.
     pub fn specific_energy(&self) -> f64 {
         -self.mu / (2.0 * self.semi_major_axis_m)
     }
 
-    /// Specific angular momentum, in m^2/s.
     pub fn specific_angular_momentum(&self) -> f64 {
         self.specific_angular_momentum_m2_s
     }
@@ -171,8 +113,6 @@ mod tests {
     fn earth_mu() -> f64 {
         CelestialBody::earth().gravitational_parameter
     }
-
-    // --- periapsis/apoapsis method (carried over from v0.2) ---
 
     fn example_orbit() -> Orbit {
         let earth = CelestialBody::earth();
@@ -200,6 +140,7 @@ mod tests {
         assert!((period_min - 90.52).abs() < 0.05);
     }
 
+    // spec's example gave 7.784/7.669 here - actual vis-viva gives 7.842/7.611, see DEVLOG
     #[test]
     fn periapsis_velocity_is_about_7_84_km_s() {
         let o = example_orbit();
@@ -241,8 +182,6 @@ mod tests {
         assert_eq!(o.orbit_type(), OrbitType::Elliptical);
     }
 
-    // --- semi-major axis / eccentricity method ---
-
     #[test]
     fn semi_major_axis_eccentricity_derives_correct_periapsis_apoapsis() {
         let o = Orbit::from_semi_major_axis_eccentricity(7_000_000.0, 0.05, earth_mu());
@@ -257,12 +196,8 @@ mod tests {
         assert!((period_min - 97.14).abs() < 0.05);
     }
 
-    // --- position/velocity method ---
-
     #[test]
     fn position_velocity_circular_orbit_gives_zero_eccentricity() {
-        // A satellite at 7000km, moving purely tangentially at exactly
-        // circular speed, should come back with e ~ 0.
         let r = 7_000_000.0;
         let v_circular = (earth_mu() / r).sqrt();
         let position = Vector2::new(r, 0.0);
@@ -275,9 +210,7 @@ mod tests {
 
     #[test]
     fn position_velocity_high_speed_gives_hyperbolic_orbit() {
-        // Same position, but well above escape velocity (escape at
-        // 7000km is ~10.67 km/s here, so 15 km/s is comfortably
-        // hyperbolic).
+        // escape velocity here is ~10.67 km/s, so 15 km/s is safely hyperbolic
         let r = 7_000_000.0;
         let position = Vector2::new(r, 0.0);
         let velocity = Vector2::new(0.0, 15_000.0);
@@ -286,7 +219,6 @@ mod tests {
         assert_eq!(o.orbit_type(), OrbitType::Hyperbolic);
         assert!(o.eccentricity > 1.0);
         assert!((o.eccentricity - 2.9513).abs() < 0.001);
-        // Hyperbolic orbits have no apoapsis or period.
         assert!(o.apoapsis_radius_m().is_none());
         assert!(o.period_s().is_none());
     }
@@ -304,8 +236,6 @@ mod tests {
         assert!(o.period_s().is_none());
     }
 
-    // --- OrbitType classification, independent of any constructor ---
-
     #[test]
     fn orbit_type_classification_boundaries() {
         assert_eq!(OrbitType::from_eccentricity(0.0), OrbitType::Circular);
@@ -314,33 +244,17 @@ mod tests {
         assert_eq!(OrbitType::from_eccentricity(1.8), OrbitType::Hyperbolic);
     }
 
-    // --- Precision / numerical stability checks ---
-    //
-    // These don't test new physics - they test that the existing
-    // formulas hold up at the extremes where floating-point error is
-    // most likely to show up: orbits that are circular to within a
-    // meter, and very low/very high altitude ranges. The equations
-    // for vis-viva involve subtracting two numbers that get close to
-    // each other for near-circular orbits (2/r and 1/a), which is
-    // exactly the kind of expression that can lose precision to
-    // catastrophic cancellation - these confirm it doesn't, at least
-    // not in any way that matters at real-world orbital altitudes.
-
+    // vis-viva subtracts 2/r and 1/a - checking that stays precise near e=0
     #[test]
     fn near_circular_orbit_does_not_lose_precision_to_cancellation() {
-        // Periapsis and apoapsis exactly 1 meter apart - about as
-        // close to circular as a "real" elliptical orbit gets.
         let earth = CelestialBody::earth();
         let rp = earth.radius_m + 500_000.0;
         let ra = rp + 1.0;
         let o = Orbit::from_periapsis_apoapsis(rp, ra, earth.gravitational_parameter);
 
-        // Eccentricity should be tiny but not garbage/NaN.
         assert!(o.eccentricity > 0.0);
         assert!(o.eccentricity < 1e-6);
 
-        // Velocity at periapsis and apoapsis should differ by only a
-        // few millimeters/second, not blow up into noise.
         let vp = o.velocity_at_periapsis_m_s();
         let va = o.velocity_at_apoapsis_m_s().unwrap();
         let diff_mm_s = (vp - va) * 1000.0;
@@ -350,9 +264,6 @@ mod tests {
 
     #[test]
     fn very_low_orbit_precision_matches_hand_derived_values() {
-        // 100m to 1000m altitude - deliberately unrealistic (that's
-        // inside the atmosphere) but a good stress test for the low
-        // end of the altitude range the calculator accepts.
         let earth = CelestialBody::earth();
         let rp = earth.radius_m + 100.0;
         let ra = earth.radius_m + 1000.0;
@@ -365,14 +276,12 @@ mod tests {
 
     #[test]
     fn high_altitude_orbit_precision_matches_hand_derived_values() {
-        // A GEO-altitude circular-ish orbit - checks the high end of
-        // realistic altitudes doesn't introduce error either.
         let earth = CelestialBody::earth();
         let r = earth.radius_m + 35_786_000.0;
         let o = Orbit::from_periapsis_apoapsis(r, r, earth.gravitational_parameter);
 
+        // GEO period should land on a sidereal day, ~23.93 hours
         let period_hours = o.period_s().unwrap() / 3600.0;
-        // GEO period should be a sidereal day, ~23.93 hours.
         assert!((period_hours - 23.93).abs() < 0.02);
     }
 }

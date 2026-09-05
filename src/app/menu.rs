@@ -1,11 +1,9 @@
 use crate::app::hohmann_transfer;
 use crate::app::orbital_mechanics;
+use crate::app::propagation;
 use crate::app::propulsion;
 use crate::ui;
 
-/// Top-level menu. Orbital Mechanics, Hohmann Transfer, and Propulsion
-/// all have their own modules now that they do something - Settings
-/// and About are still simple enough to live inline.
 pub fn main_menu_loop() {
     loop {
         ui::display::clear_screen();
@@ -15,8 +13,9 @@ pub fn main_menu_loop() {
             1 => orbital_mechanics::menu_loop(),
             2 => hohmann_transfer::menu_loop(),
             3 => propulsion::menu_loop(),
-            4 => settings_placeholder(),
-            5 => about_page(),
+            4 => propagation::menu_loop(),
+            5 => settings_placeholder(),
+            6 => about_page(),
             0 => break,
             _ => {
                 println!("\nNot a valid option.");
@@ -38,7 +37,12 @@ fn about_page() {
     ui::display::clear_screen();
     println!("ABOUT\n");
     println!("Orbital Mechanics Simulator v{}", super::VERSION);
-    println!("An interactive terminal tool for orbital mechanics and");
-    println!("mission design, built incrementally in Rust.\n");
+    println!("An interactive terminal tool for orbital mechanics,");
+    println!("Hohmann transfers, propulsion, and numerical orbit");
+    println!("propagation - in 2D and 3D, across four central bodies");
+    println!("(Earth, Moon, Mars, Sun), built incrementally in Rust.\n");
+    println!("See README.md and DEVLOG.md for details, including how");
+    println!("the physics has been verified and where the accuracy");
+    println!("limits are.\n");
     ui::input::pause("Press ENTER to return...");
 }

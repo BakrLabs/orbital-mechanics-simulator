@@ -1,10 +1,6 @@
 use crate::propulsion::rocket_equation::{self, PropulsionResult};
 use crate::ui;
 
-/// Propulsion submenu - the Tsiolkovsky rocket equation, solvable in
-/// either direction. This is also called directly from the Hohmann
-/// Transfer flow (see `propellant_for_delta_v` below) once a transfer
-/// has a Δv to spend propellant on.
 pub fn menu_loop() {
     loop {
         ui::display::clear_screen();
@@ -61,6 +57,8 @@ fn achievable_delta_v_flow() {
     ui::input::pause("\nPress ENTER to return...");
 }
 
+// called from the Hohmann transfer flow once it has a delta-v to
+// spend propellant on
 pub fn propellant_for_delta_v(delta_v_m_s: f64) {
     ui::display::clear_screen();
     println!("PROPELLANT REQUIRED\n");
@@ -79,6 +77,9 @@ pub fn propellant_for_delta_v(delta_v_m_s: f64) {
     ui::input::pause("\nPress ENTER to return...");
 }
 
+// negative values pass through here fine - propellant_required/
+// achievable_delta_v are what actually decide valid ranges and hand
+// back a proper error, so validation only lives in one place
 fn read_finite(prompt: &str) -> f64 {
     loop {
         match ui::input::prompt(prompt).parse::<f64>() {
@@ -91,16 +92,16 @@ fn read_finite(prompt: &str) -> f64 {
 
 fn show_result(result: &PropulsionResult) {
     println!("\n╔══════════════════════════════════════════════╗");
-    println!("║             PROPULSION RESULT                 ║");
+    println!("║              PROPULSION RESULT               ║");
     println!("╚══════════════════════════════════════════════╝\n");
 
-    println!("Required Δv:         {:>16.6} km/s", result.delta_v_m_s / 1000.0);
-    println!("Specific impulse:    {:>16.6} s", result.specific_impulse_s);
-    println!("Exhaust velocity:    {:>16.6} m/s", result.exhaust_velocity_m_s());
-    println!("Initial mass:        {:>16.6} kg\n", result.initial_mass_kg);
+    println!("{:<22}{:>14.6} km/s", "Required Δv:", result.delta_v_m_s / 1000.0);
+    println!("{:<22}{:>14.6} s", "Specific impulse:", result.specific_impulse_s);
+    println!("{:<22}{:>14.6} m/s", "Exhaust velocity:", result.exhaust_velocity_m_s());
+    println!("{:<22}{:>14.6} kg\n", "Initial mass:", result.initial_mass_kg);
 
-    println!("Final mass:          {:>16.6} kg", result.final_mass_kg);
-    println!("Propellant mass:     {:>16.6} kg\n", result.propellant_mass_kg());
+    println!("{:<22}{:>14.6} kg", "Final mass:", result.final_mass_kg);
+    println!("{:<22}{:>14.6} kg\n", "Propellant mass:", result.propellant_mass_kg());
 
-    println!("Mass ratio:          {:>16.6}", result.mass_ratio());
+    println!("{:<22}{:>14.6}", "Mass ratio:", result.mass_ratio());
 }

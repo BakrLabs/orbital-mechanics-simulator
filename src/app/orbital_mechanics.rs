@@ -1,13 +1,11 @@
+use crate::app::central_body;
+use crate::app::orbital_elements_3d;
 use crate::physics::body::CelestialBody;
 use crate::physics::orbit::Orbit;
 use crate::physics::orbit_type::OrbitType;
 use crate::physics::vector2::Vector2;
 use crate::ui;
 
-/// Orbital Mechanics submenu. Three ways in now to define an orbit -
-/// periapsis/apoapsis (from v0.2), semi-major axis/eccentricity, and
-/// position/velocity vectors - all three end up at the same `Orbit`
-/// and the same result screen.
 pub fn menu_loop() {
     loop {
         ui::display::clear_screen();
@@ -16,25 +14,11 @@ pub fn menu_loop() {
         println!("0. Back\n");
 
         match ui::input::read_menu_choice("Select: ") {
-            1 => central_body_menu(),
-            0 => break,
-            _ => {
-                println!("\nNot a valid option.");
-                ui::input::pause("Press ENTER to try again...");
+            1 => {
+                if let Some(body) = central_body::select() {
+                    orbit_definition_menu(body);
+                }
             }
-        }
-    }
-}
-
-fn central_body_menu() {
-    loop {
-        ui::display::clear_screen();
-        println!("CENTRAL BODY\n");
-        println!("1. Earth");
-        println!("0. Back\n");
-
-        match ui::input::read_menu_choice("Select: ") {
-            1 => orbit_definition_menu(CelestialBody::earth()),
             0 => break,
             _ => {
                 println!("\nNot a valid option.");
@@ -52,12 +36,16 @@ fn orbit_definition_menu(body: CelestialBody) {
         println!("1. Periapsis & Apoapsis");
         println!("2. Semi-major axis & Eccentricity");
         println!("3. Position & Velocity");
+        println!("4. 3D Orbital Elements");
+        println!("5. 3D Position & Velocity");
         println!("0. Back\n");
 
         match ui::input::read_menu_choice("Select: ") {
             1 => periapsis_apoapsis_flow(&body),
             2 => semi_major_axis_eccentricity_flow(&body),
             3 => position_velocity_flow(&body),
+            4 => orbital_elements_3d::elements_flow(&body),
+            5 => orbital_elements_3d::position_velocity_3d_flow(&body),
             0 => break,
             _ => {
                 println!("\nNot a valid option.");
@@ -66,8 +54,6 @@ fn orbit_definition_menu(body: CelestialBody) {
         }
     }
 }
-
-// --- Method 1: Periapsis & Apoapsis ---
 
 fn periapsis_apoapsis_flow(body: &CelestialBody) {
     ui::display::clear_screen();
@@ -93,8 +79,6 @@ fn periapsis_apoapsis_flow(body: &CelestialBody) {
     ui::input::pause("\nPress ENTER to return...");
 }
 
-// --- Method 2: Semi-major axis & Eccentricity ---
-
 fn semi_major_axis_eccentricity_flow(body: &CelestialBody) {
     ui::display::clear_screen();
     println!("SEMI-MAJOR AXIS & ECCENTRICITY\n");
@@ -115,8 +99,6 @@ fn semi_major_axis_eccentricity_flow(body: &CelestialBody) {
     show_result(body, &orbit);
     ui::input::pause("\nPress ENTER to return...");
 }
-
-// --- Method 3: Position & Velocity ---
 
 fn position_velocity_flow(body: &CelestialBody) {
     ui::display::clear_screen();
@@ -193,44 +175,44 @@ fn show_result(body: &CelestialBody, orbit: &Orbit) {
     let h_km2_s = orbit.specific_angular_momentum() / 1_000_000.0;
 
     println!("╔══════════════════════════════════════════════╗");
-    println!("║                ORBIT RESULT                   ║");
+    println!("║                 ORBIT RESULT                 ║");
     println!("╚══════════════════════════════════════════════╝\n");
     println!("Central Body: {}", body.name);
     println!("Orbit type:   {}\n", orbit.orbit_type());
 
     if orbit.semi_major_axis_m.is_finite() {
-        println!("Semi-major axis:     {:>16.6} km", a_km);
+        println!("{:<22}{:>14.6} km", "Semi-major axis:", a_km);
     } else {
-        println!("Semi-major axis:     {:>16}", "N/A (parabolic)");
+        println!("{:<22}{:>14} km", "Semi-major axis:", "N/A (parabolic)");
     }
-    println!("Eccentricity:        {:>16.8}", orbit.eccentricity);
-    println!("Periapsis radius:    {:>16.6} km", rp_km);
+    println!("{:<22}{:>14.8}", "Eccentricity:", orbit.eccentricity);
+    println!("{:<22}{:>14.6} km", "Periapsis radius:", rp_km);
 
     match orbit.apoapsis_radius_m() {
-        Some(ra_m) => println!("Apoapsis radius:     {:>16.6} km", ra_m / 1000.0),
-        None => println!("Apoapsis radius:     {:>16}", "N/A (unbound orbit)"),
+        Some(ra_m) => println!("{:<22}{:>14.6} km", "Apoapsis radius:", ra_m / 1000.0),
+        None => println!("{:<22}{:>14} km", "Apoapsis radius:", "N/A (unbound orbit)"),
     }
 
     println!("────────────────────────────────────────────────");
 
     match orbit.period_s() {
         Some(period_s) => {
-            println!("Orbital period:      {:>16.6} min", period_s / 60.0);
-            println!("                     {:>16.3} s", period_s);
+            println!("{:<22}{:>14.6} min", "Orbital period:", period_s / 60.0);
+            println!("{:<22}{:>14.3} s", "", period_s);
         }
-        None => println!("Orbital period:      {:>16}", "N/A (unbound orbit)"),
+        None => println!("{:<22}{:>14} min", "Orbital period:", "N/A (unbound orbit)"),
     }
 
     println!();
-    println!("Velocity @ periapsis:{:>16.6} km/s", vp_km_s);
+    println!("{:<22}{:>14.6} km/s", "Velocity @ periapsis:", vp_km_s);
     match orbit.velocity_at_apoapsis_m_s() {
-        Some(va_m_s) => println!("Velocity @ apoapsis: {:>16.6} km/s", va_m_s / 1000.0),
-        None => println!("Velocity @ apoapsis: {:>16}", "N/A"),
+        Some(va_m_s) => println!("{:<22}{:>14.6} km/s", "Velocity @ apoapsis:", va_m_s / 1000.0),
+        None => println!("{:<22}{:>14} km/s", "Velocity @ apoapsis:", "N/A"),
     }
 
     println!();
-    println!("Specific orbital energy: {:>16.6} MJ/kg", energy_mj_kg);
-    println!("Specific angular momentum: {:.6} x 10^4 km^2/s", h_km2_s / 1e4);
+    println!("{:<26}{:>14.6} MJ/kg", "Specific orbital energy:", energy_mj_kg);
+    println!("{:<26}{:>14.6} x 10^4 km^2/s", "Specific angular momentum:", h_km2_s / 1e4);
 
     if orbit.orbit_type() == OrbitType::Hyperbolic {
         println!("\nNote: this trajectory escapes {} - it's a flyby,", body.name);

@@ -1,26 +1,66 @@
-/// A central body for orbital calculations. Nothing fancy - just
-/// enough to keep radius and mu out of the calculation code so we're
-/// not hard-coding Earth's numbers all over the place. If a Moon or
-/// Mars option gets added down the line, it's just another constructor
-/// here, not a search-and-replace through the rest of the app.
 pub struct CelestialBody {
     pub name: &'static str,
-    /// Mean radius, in meters.
     pub radius_m: f64,
-    /// Standard gravitational parameter (mu = GM), in m^3/s^2.
-    pub gravitational_parameter: f64,
+    pub gravitational_parameter: f64, // mu = GM, m^3/s^2
 }
 
 impl CelestialBody {
-    /// Earth, using mean equatorial radius and standard mu.
-    /// Values in km / km^3/s^2 per most orbital mechanics references,
-    /// converted to SI (meters) here since that's what the physics
-    /// module works in internally.
     pub fn earth() -> Self {
         CelestialBody {
             name: "Earth",
             radius_m: 6_378_137.0,
             gravitational_parameter: 3.986_004_418e14,
         }
+    }
+
+    pub fn moon() -> Self {
+        CelestialBody {
+            name: "Moon",
+            radius_m: 1_738_090.0,
+            gravitational_parameter: 4.902_800_118e12,
+        }
+    }
+
+    pub fn mars() -> Self {
+        CelestialBody {
+            name: "Mars",
+            radius_m: 3_396_190.0,
+            gravitational_parameter: 4.282_837e13,
+        }
+    }
+
+    pub fn sun() -> Self {
+        CelestialBody {
+            name: "Sun",
+            radius_m: 6.957e8,
+            gravitational_parameter: 1.327_124_400_42e20,
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    // surface gravity = mu/r^2, cross-checked against commonly cited values
+    #[test]
+    fn moon_surface_gravity_matches_known_value() {
+        let moon = CelestialBody::moon();
+        let g = moon.gravitational_parameter / moon.radius_m.powi(2);
+        assert!((g - 1.62).abs() < 0.01);
+    }
+
+    #[test]
+    fn mars_surface_gravity_matches_known_value() {
+        let mars = CelestialBody::mars();
+        let g = mars.gravitational_parameter / mars.radius_m.powi(2);
+        assert!((g - 3.71).abs() < 0.01);
+    }
+
+    #[test]
+    fn sun_surface_gravity_matches_known_value() {
+        let sun = CelestialBody::sun();
+        let g = sun.gravitational_parameter / sun.radius_m.powi(2);
+        assert!((g - 274.0).abs() < 1.0);
     }
 }

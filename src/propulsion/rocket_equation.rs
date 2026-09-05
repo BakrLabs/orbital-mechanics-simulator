@@ -2,11 +2,6 @@ use std::fmt;
 
 use crate::physics::constants::STANDARD_GRAVITY;
 
-/// Everything that can go wrong feeding numbers into the rocket
-/// equation. Masses and Isp have to be positive to mean anything
-/// physically, and final mass can't exceed initial mass (that would
-/// mean negative propellant) - all of this is user input, so none of
-/// it gets to panic; it comes back as one of these instead.
 #[derive(Debug, PartialEq)]
 pub enum RocketEquationError {
     NonPositiveMass,
@@ -29,10 +24,9 @@ impl fmt::Display for RocketEquationError {
     }
 }
 
-/// The result of a rocket equation calculation - always ends up with
-/// all four figures filled in regardless of which one was "given" and
-/// which was "solved for", since once you know two of {m0, mf, Δv,
-/// Isp} you can get the rest.
+// once you know two of {m0, mf, dv, Isp} you can get the rest, so
+// both solve directions fill in all four fields regardless of which
+// was the input
 #[derive(Debug)]
 pub struct PropulsionResult {
     pub delta_v_m_s: f64,
@@ -55,12 +49,7 @@ impl PropulsionResult {
     }
 }
 
-/// Solves for final mass and propellant mass, given Δv, Isp, and
-/// initial mass - the direction the spec calls "Propellant Required":
-/// you know how much velocity change you need and what engine you're
-/// using, and you want to know how much fuel that costs.
-///
-/// mf = m0 / exp(Δv / (Isp * g0))
+// mf = m0 / exp(dv / (Isp * g0))
 pub fn propellant_required(
     delta_v_m_s: f64,
     specific_impulse_s: f64,
@@ -87,12 +76,7 @@ pub fn propellant_required(
     })
 }
 
-/// Solves for achievable Δv, given Isp, initial mass, and final mass -
-/// the other direction: you know how much fuel you're carrying and
-/// what engine you have, and you want to know how much velocity
-/// change that actually buys you.
-///
-/// Δv = Isp * g0 * ln(m0 / mf)
+// dv = Isp * g0 * ln(m0 / mf)
 pub fn achievable_delta_v(
     specific_impulse_s: f64,
     initial_mass_kg: f64,
@@ -123,10 +107,6 @@ pub fn achievable_delta_v(
 mod tests {
     use super::*;
 
-    // Worked example from the spec: Δv = 9.40 km/s, Isp = 450s,
-    // m0 = 10000kg. Verified this one by hand and it checks out
-    // cleanly, unlike some of the other worked examples in this
-    // project's spec - see the README for the ones that didn't.
     #[test]
     fn propellant_required_matches_spec_example() {
         let result = propellant_required(9400.0, 450.0, 10000.0).unwrap();
@@ -135,14 +115,11 @@ mod tests {
         assert!((result.mass_ratio() - 8.4155).abs() < 0.001);
     }
 
+    // solving forward then feeding the result back through the
+    // inverse should return the original dv - these two functions
+    // are inverses of each other by construction
     #[test]
     fn achievable_delta_v_is_the_exact_inverse_of_propellant_required() {
-        // If you solve "how much propellant for this Δv" and then feed
-        // the resulting masses back into "what Δv does this propellant
-        // buy", you should get the original Δv back - the two
-        // functions are inverses of each other by construction, so
-        // this is really a round-trip consistency check rather than a
-        // test of any specific number.
         let forward = propellant_required(9400.0, 450.0, 10000.0).unwrap();
         let backward = achievable_delta_v(450.0, forward.initial_mass_kg, forward.final_mass_kg).unwrap();
         assert!((backward.delta_v_m_s - 9400.0).abs() < 0.001);
@@ -150,9 +127,6 @@ mod tests {
 
     #[test]
     fn zero_propellant_gives_zero_delta_v() {
-        // Final mass equal to initial mass means no propellant was
-        // burned at all - ln(1) = 0, so Δv should come out to exactly
-        // zero, not some tiny nonzero residue from floating point.
         let result = achievable_delta_v(450.0, 10000.0, 10000.0).unwrap();
         assert_eq!(result.delta_v_m_s, 0.0);
     }
@@ -163,8 +137,6 @@ mod tests {
         let high_isp = propellant_required(9400.0, 450.0, 10000.0).unwrap();
         assert!(high_isp.propellant_mass_kg() < low_isp.propellant_mass_kg());
     }
-
-    // --- Error handling: never unwrap/panic on bad user input ---
 
     #[test]
     fn negative_initial_mass_is_rejected() {
