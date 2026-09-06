@@ -1,14 +1,23 @@
-# Orbital Mechanics Simulator
+# Vis-Viva
+
+[![CI](https://github.com/BakrLabs/vis-viva-cli/actions/workflows/ci.yml/badge.svg)](https://github.com/BakrLabs/vis-viva-cli/actions/workflows/ci.yml)
+[![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+[![Rust edition](https://img.shields.io/badge/rust-2021%20edition-orange.svg)](Cargo.toml)
+[![Dependencies](https://img.shields.io/badge/dependencies-none-brightgreen.svg)](Cargo.toml)
 
 An interactive, terminal-based orbital mechanics calculator written in Rust.
 No flags to memorize — launch it and it walks you through menus, like an
-old-school engineering console rather than a typical CLI tool.
+old-school engineering console rather than a typical CLI tool. Named after
+the vis-viva equation, the core formula this tool uses to compute orbital
+velocity, which sits at the heart of nearly every calculation it does.
 
 ```
 ╔══════════════════════════════════════════════════╗
-║          ORBITAL MECHANICS SIMULATOR                      ║
-║                     v1.0.0                                ║
-║             Interactive CLI Tool                          ║
+║                     VIS-VIVA                     ║
+║           Orbital Mechanics Simulator            ║
+║                      v1.0.0                      ║
+║                                                   ║
+║               Interactive CLI Tool               ║
 ╚══════════════════════════════════════════════════╝
 ```
 
@@ -59,8 +68,8 @@ old-school engineering console rather than a typical CLI tool.
 ## Installation
 
 ```
-git clone https://github.com/BakrLabs/orbital-mechanics-simulator.git
-cd orbital-mechanics-simulator
+git clone https://github.com/BakrLabs/vis-viva-cli.git
+cd vis-viva-cli
 cargo build --release
 ```
 
@@ -75,17 +84,17 @@ menu-driven — pick a number, answer the prompts.
 
 ```
 ┌──────────────────────────────────────────────┐
-│                  MAIN MENU                   │
+│                  MAIN MENU                    │
 ├──────────────────────────────────────────────┤
-│                                              │
-│  1. Orbital Mechanics                        │
-│  2. Hohmann Transfer                         │
-│  3. Propulsion                               │
-│  4. Orbit Propagation                        │
-│  5. Settings                                 │
-│  6. About                                    │
-│  0. Exit                                     │
-│                                              │
+│                                                │
+│  1. Orbital Mechanics                         │
+│  2. Hohmann Transfer                          │
+│  3. Propulsion                                │
+│  4. Orbit Propagation                          │
+│  5. Settings                                   │
+│  6. About                                      │
+│  0. Exit                                       │
+│                                                │
 └──────────────────────────────────────────────┘
 ```
 
@@ -187,6 +196,12 @@ code rather than replacing it — see [`DEVLOG.md`](DEVLOG.md) for why.
 ```
 cargo test
 ```
+
+Every push and pull request also runs `cargo fmt --check`, a full build,
+and the test suite via GitHub Actions (see the CI badge above and
+[`.github/workflows/ci.yml`](.github/workflows/ci.yml)) — the badge only
+turns green once the workflow has actually run, so it'll show as pending
+until the first push to a real repo.
 
 Every physics and propulsion module has unit tests, checked against
 hand-derived reference values (not just the numbers a calculator run

@@ -36,7 +36,8 @@ fn settings_placeholder() {
 fn about_page() {
     ui::display::clear_screen();
     println!("ABOUT\n");
-    println!("Orbital Mechanics Simulator v{}", super::VERSION);
+    println!("Vis-Viva v{}", super::VERSION);
+    println!("(an Orbital Mechanics Simulator)\n");
     println!("An interactive terminal tool for orbital mechanics,");
     println!("Hohmann transfers, propulsion, and numerical orbit");
     println!("propagation - in 2D and 3D, across four central bodies");

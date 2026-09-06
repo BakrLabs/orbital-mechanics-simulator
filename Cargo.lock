@@ -3,5 +3,5 @@
 version = 4
 
 [[package]]
-name = "orbital-mechanics-simulator"
+name = "vis-viva-cli"
 version = "1.0.0"

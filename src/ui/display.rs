@@ -20,7 +20,8 @@ pub fn title_screen(version: &str) {
 
     println!("{border_top}");
     println!("{blank}");
-    println!("║{}║", centered("ORBITAL MECHANICS SIMULATOR"));
+    println!("║{}║", centered("VIS-VIVA"));
+    println!("║{}║", centered("Orbital Mechanics Simulator"));
     println!("║{}║", centered(&format!("v{version}")));
     println!("{blank}");
     println!("║{}║", centered("Interactive CLI Tool"));
